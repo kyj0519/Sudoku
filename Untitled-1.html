@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>스도쿠 퍼즐</title>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #f8f8f8;
+    }
+
+    .title {
+      font-size: 36px;
+      margin-bottom: 20px;
+      font-weight: bold;
+      font-family: 'Arial', sans-serif;
+    }
+
+    .sudoku-board {
+      display: grid;
+      grid-template-columns: repeat(9, 50px);
+      grid-template-rows: repeat(9, 50px);
+    }
+
+    .cell {
+      border: 1px solid #ccc;
+      text-align: center;
+      font-size: 20px;
+      background-color: white;
+      box-sizing: border-box;
+      transition: background-color 0.2s ease;
+    }
+
+    .highlight {
+      background-color: #d4ffd4 !important;
+    }
+
+    /* 가로 굵은 선 */
+    .cell.row-0 { border-top: 3px solid black; }
+    .cell.row-3 { border-top: 3px solid black; }
+    .cell.row-6 { border-top: 3px solid black; }
+    .cell.row-8 { border-bottom: 3px solid black; }
+
+    /* 세로 굵은 선 */
+    .cell.col-0 { border-left: 3px solid black; }
+    .cell.col-3 { border-left: 3px solid black; }
+    .cell.col-6 { border-left: 3px solid black; }
+    .cell.col-8 { border-right: 3px solid black; }
+
+    /* 버튼 컨테이너: 가로 정렬 및 간격 */
+    .button-container {
+      margin-top: 20px;
+      display: flex;
+      gap: 12px;
+    }
+
+    .solve-button, .reset-button {
+      padding: 10px 20px;
+      font-size: 18px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      color: white;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      user-select: none;
+    }
+
+    .solve-button {
+      margin-left: 20px; /* ← 여기 수정된 부분 */
+      background-color: #4CAF50;
+    }
+    .solve-button:hover {
+      background-color: #45a049;
+    }
+
+    .reset-button {
+      background-color: #f44336;
+    }
+    .reset-button:hover {
+      background-color: #d32f2f;
+    }
+
+    /* 회전 아이콘 애니메이션 */
+    .rotate-icon {
+      display: inline-block;
+      animation: rotate 1.5s linear infinite;
+    }
+
+    @keyframes rotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="title">Sudoku</div>
+
+  <div class="sudoku-board" id="sudoku-board"></div>
+
+  <div class="button-container">
+    <button class="solve-button" onclick="solveSudoku()">스도쿠 풀기</button>
+    <button class="reset-button" onclick="resetBoard()">
+      <span class="rotate-icon">↻</span> 
+    </button>
+  </div>
+
+  <script>
+    const boardElement = document.getElementById("sudoku-board");
+    const cells = [];
+
+    for (let i = 0; i < 9; i++) {
+      cells[i] = [];
+      for (let j = 0; j < 9; j++) {
+        const input = document.createElement("input");
+        input.className = `cell row-${i} col-${j}`;
+        input.type = "text";
+        input.maxLength = 1;
+
+        // 숫자 이외 입력 방지
+        input.addEventListener("input", (e) => {
+          const val = e.target.value;
+          if (!/^[1-9]?$/.test(val)) {
+            alert("숫자를 입력해주세요!");
+            e.target.value = "";
+          }
+        });
+
+        boardElement.appendChild(input);
+        cells[i][j] = input;
+      }
+    }
+
+    function getBoard() {
+      const board = [];
+      for (let i = 0; i < 9; i++) {
+        board[i] = [];
+        for (let j = 0; j < 9; j++) {
+          const val = cells[i][j].value;
+          board[i][j] = val === "" ? 0 : parseInt(val);
+        }
+      }
+      return board;
+    }
+
+    function delay(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function setBoardAnimated(board) {
+      for (let i = 0; i < 9; i++) {
+        for (let j = 0; j < 9; j++) {
+          if (cells[i][j].value === "") {
+            cells[i][j].value = board[i][j];
+            cells[i][j].classList.add("highlight");
+            await delay(20);
+            cells[i][j].classList.remove("highlight");
+          }
+        }
+      }
+    }
+
+    function isValid(board, row, col, num) {
+      for (let i = 0; i < 9; i++) {
+        if (board[row][i] === num || board[i][col] === num) return false;
+      }
+
+      const boxRow = Math.floor(row / 3) * 3;
+      const boxCol = Math.floor(col / 3) * 3;
+      for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+          if (board[boxRow + i][boxCol + j] === num) return false;
+        }
+      }
+
+      return true;
+    }
+
+    function solve(board) {
+      for (let row = 0; row < 9; row++) {
+        for (let col = 0; col < 9; col++) {
+          if (board[row][col] === 0) {
+            for (let num = 1; num <= 9; num++) {
+              if (isValid(board, row, col, num)) {
+                board[row][col] = num;
+                if (solve(board)) return true;
+                board[row][col] = 0;
+              }
+            }
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    async function solveSudoku() {
+      const board = getBoard();
+
+      if (solve(board)) {
+        await setBoardAnimated(board);
+        alert("스도쿠를 성공적으로 풀었습니다!");
+      } else {
+        alert("해결할 수 없는 퍼즐입니다.");
+      }
+    }
+
+    function resetBoard() {
+      for (let i = 0; i < 9; i++) {
+        for (let j = 0; j < 9; j++) {
+          cells[i][j].value = "";
+        }
+      }
+    }
+  </script>
+</body>
+</html>
